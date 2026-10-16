@@ -15,6 +15,18 @@ jobs:
       - name: Unpack source
         run: unzip -q -o numdart-src.zip -d app
 
+      # Files in patch/ override the zip. Name encodes the path: src__app__daily.tsx -> src/app/daily.tsx
+      - name: Apply source patch
+        run: |
+          if [ -d patch ]; then
+            for f in patch/*; do
+              dest="app/$(basename "$f" | sed 's#__#/#g')"
+              mkdir -p "$(dirname "$dest")"
+              cp "$f" "$dest"
+              echo "patched $dest"
+            done
+          fi
+
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -75,9 +87,9 @@ jobs:
       - name: Collect outputs
         run: |
           mkdir -p out
-          cp app/android/app/build/outputs/apk/release/app-release.apk out/numdart-1.0.0.apk
+          cp app/android/app/build/outputs/apk/release/app-release.apk out/numdart-1.0.1.apk
           if [ -f app/android/app/build/outputs/bundle/release/app-release.aab ]; then
-            cp app/android/app/build/outputs/bundle/release/app-release.aab out/numdart-1.0.0.aab
+            cp app/android/app/build/outputs/bundle/release/app-release.aab out/numdart-1.0.1.aab
           fi
           ls -la out
 
