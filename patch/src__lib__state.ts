@@ -2,6 +2,7 @@
 import { persistedStore } from './store';
 import type { BoardState } from '../engine/board';
 import type { Move } from '../engine/classic';
+import type { TenState } from '../engine/ten';
 import { addDays } from '../engine/dates';
 
 // ───────────── Settings ─────────────
@@ -157,3 +158,26 @@ export function freshSeed(): number {
 export function nextUnlimited(difficulty?: UnlimitedDifficulty) {
   unlimitedStore.set((u) => ({ ...u, difficulty: difficulty ?? u.difficulty, seed: freshSeed(), record: emptyRecord() }));
 }
+
+// ───────────── Number Ten (match equal digits or pairs that make 10) ─────────────
+export interface TenProgress {
+  level: number;
+  maxLevel: number;
+  /** in-progress snapshot (resume after app restart) */
+  current: null | {
+    level: number;
+    state: TenState;
+    history: TenState[];
+  };
+  stars: Record<number, number>;
+  totalScore: number;
+  rulesSeen: boolean;
+}
+export const tenStore = persistedStore<TenProgress>('ten', {
+  level: 1,
+  maxLevel: 1,
+  current: null,
+  stars: {},
+  totalScore: 0,
+  rulesSeen: false,
+});

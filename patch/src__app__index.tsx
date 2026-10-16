@@ -210,6 +210,7 @@ function LevelPlay({ level }: { level: number }) {
         <Text maxFontSizeMultiplier={NUM_SCALE} style={{ fontFamily: fonts.uiBold, fontSize: 18, color: c.text, flex: 1 }}>
           {t('level', { n: level })}
         </Text>
+        <IconBtn label="🔟" a11y="Number Ten" onPress={() => router.push('/ten')} />
         <IconBtn label="🎯" a11y={t('daily')} dot={dailyPending} onPress={() => router.push('/daily')} />
         <IconBtn label="⚙" a11y={t('settings')} onPress={() => router.push('/settings')} />
         <IconBtn label="📊" a11y={t('stats')} onPress={() => router.push('/stats')} />

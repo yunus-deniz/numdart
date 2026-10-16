@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen, IconBtn } from '../components/ui';
-import { boardStore, liveStreak, statsStore, unlimitedStore } from '../lib/state';
+import { boardStore, liveStreak, statsStore, tenStore, unlimitedStore } from '../lib/state';
 import { useStore } from '../lib/store';
 import { fonts, NUM_SCALE, useTheme } from '../lib/theme';
 import { localDateISO } from '../engine/dates';
@@ -14,6 +14,7 @@ export default function StatsScreen() {
   const s = useStore(statsStore);
   const b = useStore(boardStore);
   const u = useStore(unlimitedStore);
+  const ten = useStore(tenStore);
   const pct = s.played ? Math.round((s.exact / s.played) * 100) : 0;
   const maxBar = Math.max(1, ...s.dist);
   const tiles: [string, string | number][] = [
@@ -79,6 +80,10 @@ export default function StatsScreen() {
         <View style={{ flex: 1, alignItems: 'center', backgroundColor: c.surface, borderRadius: 14, paddingVertical: 12, borderWidth: 1, borderColor: c.border, marginLeft: 8 }}>
           <Text style={{ fontFamily: fonts.num, fontSize: 26, color: c.text }}>{u.exact}</Text>
           <Text style={{ fontFamily: fonts.ui, fontSize: 11, color: c.text2 }}>{t('unlimitedPlayed')}</Text>
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', backgroundColor: c.surface, borderRadius: 14, paddingVertical: 12, borderWidth: 1, borderColor: c.border, marginLeft: 8 }}>
+          <Text style={{ fontFamily: fonts.num, fontSize: 26, color: c.text }}>{ten.maxLevel}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit style={{ fontFamily: fonts.ui, fontSize: 11, color: c.text2 }}>{t('tenBest')}</Text>
         </View>
       </View>
     </Screen>
