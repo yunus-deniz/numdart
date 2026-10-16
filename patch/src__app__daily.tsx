@@ -50,14 +50,12 @@ const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 type Mode = 'daily' | 'unlimited';
 
 export default function DailyScreen() {
-  const daily = useStore(dailyStore);
   const [today] = useState(localDateISO);
   // Must be computed before touchDate() moves the high-water mark.
   const [rolledBack] = useState(() => clockRolledBack(today));
   useEffect(() => touchDate(today), [today]);
   // Today's daily already done → open straight into Unlimited.
   const [mode, setMode] = useState<Mode>(() => (dailyStore.get().records[today]?.finished ? 'unlimited' : 'daily'));
-  if (!daily.tutorialDone) return <Tutorial onDone={() => dailyStore.set((d) => ({ ...d, tutorialDone: true }))} />;
   return mode === 'daily' ? (
     <DailyMode today={today} rolledBack={rolledBack} onMode={setMode} />
   ) : (
@@ -614,129 +612,6 @@ function ClassicGame({
         })}
       </Sheet>
       <Confetti burst={burst} />
-    </Screen>
-  );
-}
-
-// ───────────────────────────── Tutorial (~15 s, learn by playing) ─────────────────────────────
-
-const TUT = { numbers: [100, 50, 5], large: [true, true, false] };
-
-function Tutorial({ onDone }: { onDone: () => void }) {
-  const c = useTheme();
-  const { t } = useTranslation();
-  const [step, setStep] = useState(0);
-  const [ps, setPs] = useState<PlayState>(() => initialState(TUT));
-  const [aSlot, setA] = useState<number | null>(null);
-  const [op, setOp] = useState<Op | null>(null);
-  const [bounce, setBounce] = useState({ slot: -1, k: 0 });
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const target = step === 0 ? 150 : 145;
-  const stepStart = useRef<PlayState>(initialState(TUT));
-
-  const onCard = (i: number) => {
-    if (step > 1 || ps.cards[i].used || (step === 0 && i === 2)) return;
-    if (aSlot === null || op === null) {
-      setA(aSlot === i ? null : i);
-      setOp(null);
-      sound('tap');
-      haptic.tap();
-      return;
-    }
-    const next = play(ps, aSlot, op, i);
-    setA(null);
-    setOp(null);
-    if (!next) {
-      sound('error');
-      haptic.error();
-      return;
-    }
-    setPs(next);
-    setBounce((x) => ({ slot: i, k: x.k + 1 }));
-    if (next.cards[i].value === target) {
-      sound(step === 0 ? 'pop' : 'win');
-      haptic.success();
-      timers.current.push(
-        setTimeout(() => {
-          stepStart.current = next;
-          setStep(step + 1);
-        }, 550),
-      );
-    } else {
-      sound('error');
-      haptic.error();
-      timers.current.push(setTimeout(() => setPs(stepStart.current), 600));
-    }
-  };
-
-  return (
-    <Screen>
-      <View style={{ height: 48, flexDirection: 'row', alignItems: 'center' }}>
-        <IconBtn label="←" a11y={t('back')} onPress={goBack} />
-        <Text style={{ flex: 1, textAlign: 'center', fontFamily: fonts.uiBold, fontSize: 17, color: c.text }}>{t('daily')}</Text>
-        <View style={{ width: 40 }} />
-      </View>
-      {step < 2 ? (
-        <View style={{ flex: 1, justifyContent: 'center', gap: 20 }}>
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontFamily: fonts.uiBold, fontSize: 11, letterSpacing: 2, color: c.text2, marginBottom: 4 }}>{t('target')}</Text>
-            <View style={{ minWidth: 120, height: 64, borderRadius: 16, borderWidth: 3, borderColor: c.accent, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: fonts.num, fontSize: 36, color: c.text }}>{target}</Text>
-            </View>
-          </View>
-          <P c={c} center color={c.primary}>
-            {step === 0 ? t('tut1') : t('tut2')}
-          </P>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {ps.cards.map((card, i) => (
-              <NumberCard
-                key={i}
-                value={card.value}
-                used={card.used}
-                made={card.made}
-                large={card.large}
-                selected={aSlot === i}
-                dim={false}
-                faded={false}
-                hidden={step === 0 && i === 2}
-                bounceKey={bounce.slot === i ? bounce.k : 0}
-                onPress={() => onCard(i)}
-                testID={`tcard-${i}`}
-              />
-            ))}
-          </View>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', direction: 'ltr' }}>
-            {OPS.map((o) => (
-              <OpButton
-                key={o}
-                op={o}
-                label={opName(t, o)}
-                active={op === o}
-                disabled={aSlot === null}
-                onPress={() => {
-                  if (aSlot === null) return;
-                  setOp(op === o ? null : o);
-                  sound('tap');
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      ) : (
-        <View style={{ flex: 1, justifyContent: 'center', gap: 14 }}>
-          <H c={c}>{t('tut3Title')}</H>
-          {[t('tut3a'), t('tut3b'), t('tut3c')].map((s) => (
-            <Text key={s} style={{ fontFamily: fonts.uiSemi, fontSize: 18, color: c.text, textAlign: 'center' }}>
-              {s}
-            </Text>
-          ))}
-          <P c={c} center>
-            {t('tut3d')}
-          </P>
-          <Btn kind="primary" label={t('startDaily')} onPress={onDone} style={{ marginTop: 12 }} />
-        </View>
-      )}
     </Screen>
   );
 }

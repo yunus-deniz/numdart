@@ -42,9 +42,10 @@ test('1,000 daily puzzles: exact solution, deterministic, profile respected', ()
       `solution does not reach target on ${iso}`,
     );
     const prof = profileForDate(iso);
+    // Every daily needs at least 5 of the 6 numbers (no two-step shortcuts).
+    assert.ok(p.minOps >= 4, `too easy on ${iso}`);
     if (prof === 'heavy') assert.equal(p.minOps, 5, iso);
-    if (prof === 'light') assert.ok(p.minOps >= 3 && p.solutions >= 5, iso);
-    if (prof === 'mid') assert.ok(p.minOps >= 3 && p.minOps <= 4, iso);
+    if (prof === 'light') assert.ok(p.solutions >= 3, iso);
     // Determinism (spot check every 50th day; full regen is the same code path).
     if (d % 50 === 0) assert.deepEqual(dailyPuzzle(iso), p);
   }

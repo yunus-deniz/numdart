@@ -7,7 +7,7 @@ const memo = new Map<string, Puzzle>();
 export function getDailyPuzzle(iso: string): Puzzle {
   const hit = memo.get(iso);
   if (hit) return hit;
-  const key = `puzzle:v1:${iso}`;
+  const key = `puzzle:v2:${iso}`;
   try {
     const raw = mmkv.getString(key);
     if (raw) {
@@ -49,7 +49,7 @@ export function getUnlimitedPuzzle(seed: number, difficulty: Difficulty) {
   const key = `${seed}:${difficulty}`;
   let p = unlimitedMemo.get(key);
   if (!p) {
-    p = generatePuzzle(seed, difficulty, 'any');
+    p = generatePuzzle(seed, difficulty, difficulty === 'hard' ? 'heavy' : 'any');
     unlimitedMemo.set(key, p);
   }
   return p;
