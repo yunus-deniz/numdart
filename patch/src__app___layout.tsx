@@ -45,6 +45,7 @@ export default function RootLayout() {
       <StatusBar style={c.dark ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: c.bg }, animation: 'fade' }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="pop" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="daily" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ten" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="stats" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />

@@ -1,309 +1,210 @@
-/** Board Clear — the main screen. Opens straight into the current level. */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
-import { router } from 'expo-router';
+/** Home: pick one of the three games. */
+import React from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { router, type Href } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import {
-  canSelect,
-  formula,
-  generateLevel,
-  initialBoard,
-  isCleared,
-  judge,
-  pop,
-  solveBoard,
-  targetLabel,
-  type BoardState,
-  type Level,
-} from '../engine/board';
-import { localDateISO } from '../engine/dates';
-import { BoardTile } from '../components/BoardTile';
-import { TargetQueue } from '../components/TargetQueue';
-import { Confetti } from '../components/Confetti';
-import { Btn, IconBtn, Screen } from '../components/ui';
-import { boardStore, dailyStore } from '../lib/state';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { IconBtn, Screen } from '../components/ui';
+import { tenColor } from '../components/TenTile';
+import { boardStore, dailyStore, tenStore } from '../lib/state';
 import { useStore } from '../lib/store';
+import { localDateISO } from '../engine/dates';
 import { fonts, NUM_SCALE, useTheme } from '../lib/theme';
 import { haptic, sound } from '../lib/feedback';
-import { requestReward } from '../lib/rewards';
 
-const GAP = 12;
+const LOGO = 'Digitopia';
 
-export default function BoardScreen() {
-  const prog = useStore(boardStore);
-  // Remount the play area per level so all transient state resets cleanly.
-  return <LevelPlay key={prog.level} level={prog.level} />;
-}
-
-function LevelPlay({ level }: { level: number }) {
+export default function HomeScreen() {
   const c = useTheme();
   const { t } = useTranslation();
-  const L: Level = useMemo(() => generateLevel(level), [level]);
-  const prog = useStore(boardStore);
+  const board = useStore(boardStore);
+  const ten = useStore(tenStore);
   const daily = useStore(dailyStore);
-  const today = localDateISO();
-  const dailyPending = prog.dailyUnlockedHint && !daily.records[today]?.finished;
+  const doneToday = !!daily.records[localDateISO()]?.finished;
 
-  const resume = prog.current && prog.current.level === level ? prog.current : null;
-  const [state, setState] = useState<BoardState>(() => resume?.state ?? initialBoard(L));
-  const [history, setHistory] = useState<BoardState[]>(() => resume?.history ?? []);
-  const [undoUsed, setUndoUsed] = useState(() => resume?.undoUsed ?? false);
-  const [sel, setSel] = useState<number[]>([]);
-  const [popping, setPopping] = useState<number[]>([]);
-  const [over, setOver] = useState<number[]>([]);
-  const [locked, setLocked] = useState(() => (resume ? !isCleared(resume.state) && !solveBoard(L, resume.state) : false));
-  const [won, setWon] = useState(false);
-  const [hintGroup, setHintGroup] = useState<number[] | null>(null);
-  const [burst, setBurst] = useState(0);
-  const [area, setArea] = useState({ w: 0, h: 0 });
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  const later = (ms: number, fn: () => void) => timers.current.push(setTimeout(fn, ms));
-
-  // App was closed during the win animation: move on to the next level.
-  useEffect(() => {
-    if (resume && isCleared(resume.state)) {
-      boardStore.set((p) => ({
-        ...p,
-        level: level + 1,
-        maxLevel: Math.max(p.maxLevel, level + 1),
-        current: null,
-        dailyUnlockedHint: p.dailyUnlockedHint || level >= 4,
-      }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Pre-generate the next level in the background so the transition is instant.
-  useEffect(() => {
-    const id = setTimeout(() => generateLevel(level + 1), 800);
-    return () => clearTimeout(id);
-  }, [level]);
-
-  // Persist the in-progress level so the app resumes exactly where it was.
-  useEffect(() => {
-    if (won) return;
-    boardStore.set((p) => ({ ...p, current: { level, state, history: history.slice(-12), undoUsed } }));
-  }, [level, state, history, undoUsed, won]);
-
-  const target = L.targets[state.targetIndex];
-  const vals = sel.map((i) => state.values[i] as number);
-  const busy = popping.length > 0 || over.length > 0 || won || locked;
-
-  const commitPop = useCallback(
-    (cells: number[]) => {
-      const next = pop(L, state, cells);
-      setHistory((h) => [...h, state]);
-      setState(next);
-      setSel([]);
-      setPopping([]);
-      setHintGroup(null);
-      if (isCleared(next)) {
-        setWon(true);
-        setBurst((b) => b + 1);
-        sound('win');
-        haptic.success();
-        later(1500, () => {
-          boardStore.set((p) => ({
-            ...p,
-            level: level + 1,
-            maxLevel: Math.max(p.maxLevel, level + 1),
-            current: null,
-            dailyUnlockedHint: p.dailyUnlockedHint || level >= 4,
-          }));
-        });
-      } else if (!solveBoard(L, next)) {
-        setLocked(true);
-        haptic.error();
-      }
-    },
-    [L, state, level],
-  );
-
-  const onTile = (i: number) => {
-    if (busy || !target || !canSelect(state, i)) return;
-    if (sel.includes(i)) {
-      setSel(sel.filter((x) => x !== i));
-      sound('tap');
-      haptic.tap();
-      return;
-    }
-    const next = [...sel, i];
-    const status = judge(target, next.map((k) => state.values[k] as number));
-    setSel(next);
-    if (status === 'hit') {
-      setPopping(next);
-      sound('pop');
-      haptic.pop();
-      later(380, () => commitPop(next));
-    } else if (status === 'over') {
-      setOver(next);
-      sound('error');
-      haptic.error();
-      later(450, () => {
-        setSel([]);
-        setOver([]);
-      });
-    } else {
-      sound('tap');
-      haptic.tap();
-    }
+  const go = (href: Href) => {
+    sound('tap');
+    haptic.tap();
+    router.push(href);
   };
 
-  // Free, unlimited "undo last move" (friendlier than the old once-per-level undo-3).
-  const undoLast = () => {
-    if (history.length === 0) return;
-    const back = history[history.length - 1];
-    setState(back);
-    setHistory(history.slice(0, -1));
-    setUndoUsed(true);
-    setSel([]);
-    setHintGroup(null);
-    setLocked(!solveBoard(L, back));
-    sound('undo');
-  };
-
-  const hint = async () => {
-    if (!(await requestReward('board-hint'))) return;
-    // Walk back to the latest snapshot that still has a solution.
-    const stack = [...history, state];
-    for (let k = stack.length - 1; k >= 0; k--) {
-      const path = solveBoard(L, stack[k]);
-      if (path) {
-        setState(stack[k]);
-        setHistory(stack.slice(0, k));
-        setSel([]);
-        setLocked(false);
-        setHintGroup(path[0]);
-        if (k < stack.length - 1) sound('undo');
-        return;
-      }
-    }
-  };
-
-  const restart = () => {
-    setState(initialBoard(L));
-    setHistory([]);
-    setSel([]);
-    setLocked(false);
-    setHintGroup(null);
-    sound('undo');
-  };
-
-  const onLayout = (e: LayoutChangeEvent) => setArea({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height });
-  const tile = Math.floor(
-    Math.min(L.cols * L.rows <= 6 ? 112 : 96, (area.w - GAP * (L.cols - 1)) / L.cols, (area.h - GAP * (L.rows - 1)) / L.rows),
-  );
-
-  // Scripted onboarding inside the first levels.
-  const pulseCells = new Set<number>(hintGroup ?? (level === 1 && state.targetIndex === 0 && sel.length === 0 ? [0, 3] : []));
-  let caption = '';
-  if (won) caption = t('cleared');
-  else if (sel.length) caption = '';
-  else if (level === 1 && state.targetIndex === 0) caption = t('tapTwo', { t: target?.value ?? 10 });
-  else if (level === 2) caption = t('pickHint');
-  
   return (
     <Screen>
-      {/* Top bar */}
-      <View style={{ height: 48, flexDirection: 'row', alignItems: 'center' }}>
-        <Text maxFontSizeMultiplier={NUM_SCALE} style={{ fontFamily: fonts.uiBold, fontSize: 18, color: c.text, flex: 1 }}>
-          {t('level', { n: level })}
-        </Text>
-        <IconBtn label="🔟" a11y="Number Ten" onPress={() => router.push('/ten')} />
-        <IconBtn label="🎯" a11y={t('daily')} dot={dailyPending} onPress={() => router.push('/daily')} />
+      <View style={{ height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
         <IconBtn label="⚙" a11y={t('settings')} onPress={() => router.push('/settings')} />
         <IconBtn label="📊" a11y={t('stats')} onPress={() => router.push('/stats')} />
       </View>
-      {/* Target queue + live capsule */}
-      <View style={{ marginTop: 12 }}>
-        <TargetQueue targets={L.targets} index={Math.min(state.targetIndex, L.targets.length)} />
-        <View style={{ height: 40, alignItems: 'center', justifyContent: 'center' }}>
-          {sel.length > 0 && target ? (
-            <View
-              style={{
-                paddingHorizontal: 14,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: over.length ? c.far : popping.length ? c.exact : c.surface,
-                borderWidth: 1,
-                borderColor: over.length || popping.length ? 'transparent' : c.border,
-              }}
-            >
-              <Text
-                maxFontSizeMultiplier={NUM_SCALE}
-                style={{ fontFamily: fonts.numSemi, fontSize: 16, color: over.length || popping.length ? '#fff' : c.text, fontVariant: ['tabular-nums'] }}
-              >
-                {formula(target.kind, vals)} / {targetLabel(target)}
-              </Text>
-            </View>
-          ) : dailyPending && level >= 5 && !won ? (
-            <Pressable onPress={() => router.push('/daily')} accessibilityRole="button">
-              <View style={{ backgroundColor: c.accent, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 }}>
-                <Text style={{ color: '#fff', fontFamily: fonts.uiSemi, fontSize: 14 }}>🎯 {t('dailyReady')}</Text>
-              </View>
-            </Pressable>
-          ) : (
-            <Text style={{ fontFamily: fonts.uiSemi, fontSize: 15, color: won ? c.exact : c.text2 }}>{caption}</Text>
-          )}
-        </View>
-      </View>
 
-      {/* Board */}
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 8 }} onLayout={onLayout}>
-        {tile > 0 && (
-          <View style={{ width: tile * L.cols + GAP * (L.cols - 1), flexDirection: 'row', flexWrap: 'wrap', gap: GAP }}>
-            {state.values.map((v, i) => (
-              <BoardTile
-                key={i}
-                value={v}
-                size={tile}
-                order={sel.indexOf(i) + 1}
-                popping={popping.includes(i)}
-                over={over.includes(i)}
-                frozen={!!state.frozen[i] && v !== null}
-                pulse={pulseCells.has(i)}
-                onPress={() => onTile(i)}
-                testID={`tile-${i}`}
-              />
+      <ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        {/* Logo: each letter in one of the game colours */}
+        <View style={{ alignItems: 'center', marginTop: 4, marginBottom: 22 }}>
+          <View style={{ flexDirection: 'row' }} accessibilityRole="header" accessibilityLabel={LOGO}>
+            {LOGO.split('').map((ch, i) => (
+              <Text key={i} allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 42, color: tenColor((i % 9) + 1, c.dark), letterSpacing: 0.5 }}>
+                {ch}
+              </Text>
             ))}
           </View>
-        )}
-        {locked && (
-          <View
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              backgroundColor: c.bg,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: c.border,
-              padding: 20,
-              gap: 10,
-            }}
-          >
-            <Text style={{ fontFamily: fonts.uiBold, fontSize: 22, color: c.text, textAlign: 'center' }}>{t('noMoves')}</Text>
-            <Text style={{ fontFamily: fonts.ui, fontSize: 14, color: c.text2, textAlign: 'center', marginBottom: 6 }}>{t('noMovesSub')}</Text>
-            {history.length > 0 && <Btn kind="primary" label={t('undoLast')} onPress={undoLast} />}
-            <Btn kind="accent" label={t('hintFix')} onPress={hint} a11y={`${t('hintFix')}. ${t('hintFixSub')}`} />
-            <Btn label={t('restart')} onPress={restart} />
-          </View>
-        )}
-      </View>
-
-      {/* Bottom bar */}
-      <View style={{ height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row' }}>
-          <IconBtn label="↻" a11y={t('restart')} onPress={restart} />
-          {history.length > 0 && !won && <IconBtn label="↺" a11y={t('undoLast')} onPress={undoLast} />}
+          <Text style={{ fontFamily: fonts.uiSemi, fontSize: 15, color: c.text2, marginTop: 2 }}>{t('menuSub')}</Text>
         </View>
-        <Text style={{ fontFamily: fonts.ui, color: c.text2, fontSize: 13 }}>
-          {Math.min(state.targetIndex, L.targets.length)}/{L.targets.length}
-        </Text>
-        <IconBtn label="💡" a11y={t('hintBtn')} onPress={hint} />
-      </View>
-      <Confetti burst={burst} />
+
+        <View style={{ gap: 14 }}>
+          <GameCard
+            index={0}
+            color={c.primary}
+            title={t('popTitle')}
+            desc={t('popDesc')}
+            badge={t('level', { n: board.level })}
+            art={<PopArt />}
+            onPress={() => go('/pop')}
+          />
+          <GameCard
+            index={1}
+            color={c.dark ? '#E11D48' : '#E11D48'}
+            title={t('tenTitle')}
+            desc={t('tenDesc')}
+            badge={t('level', { n: ten.level })}
+            art={<TenArt />}
+            onPress={() => go('/ten')}
+          />
+          <GameCard
+            index={2}
+            color={c.dark ? '#0F766E' : '#0D9488'}
+            title={t('targetTitle')}
+            desc={t('targetDesc')}
+            badge={doneToday ? t('menuDone') : t('menuReady')}
+            dot={!doneToday}
+            art={<TargetArt />}
+            onPress={() => go('/daily')}
+          />
+        </View>
+      </ScrollView>
     </Screen>
   );
+}
+
+function GameCard({
+  index,
+  color,
+  title,
+  desc,
+  badge,
+  dot,
+  art,
+  onPress,
+}: {
+  index: number;
+  color: string;
+  title: string;
+  desc: string;
+  badge: string;
+  dot?: boolean;
+  art: React.ReactNode;
+  onPress: () => void;
+}) {
+  return (
+    <Animated.View entering={FadeInDown.delay(80 + index * 90).duration(380)}>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`${title}. ${desc}. ${badge}`}>
+        {({ pressed }) => (
+          <View style={{ borderRadius: 24, backgroundColor: shade(color), paddingBottom: pressed ? 2 : 5, marginTop: pressed ? 3 : 0 }}>
+            <View style={{ borderRadius: 24, backgroundColor: color, padding: 18, flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 128, overflow: 'hidden' }}>
+              {/* soft decorative circles */}
+              <View style={{ position: 'absolute', right: -30, top: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.10)' }} />
+              <View style={{ position: 'absolute', right: 40, bottom: -50, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.07)' }} />
+              <View style={{ flex: 1 }}>
+                <Text maxFontSizeMultiplier={NUM_SCALE} style={{ fontFamily: fonts.num, fontSize: 28, color: '#fff' }}>
+                  {title}
+                </Text>
+                <Text numberOfLines={2} style={{ fontFamily: fonts.ui, fontSize: 14, lineHeight: 19, color: 'rgba(255,255,255,0.88)', marginTop: 2 }}>
+                  {desc}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10 }}>
+                  <View style={{ backgroundColor: 'rgba(255,255,255,0.20)', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {dot && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#FDE047' }} />}
+                    <Text numberOfLines={1} style={{ fontFamily: fonts.uiBold, fontSize: 12, color: '#fff' }}>
+                      {badge}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <View style={{ width: 92, alignItems: 'center', justifyContent: 'center' }}>{art}</View>
+            </View>
+          </View>
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/** Tiny illustrations made of real game tiles. */
+function MiniTile({ v, bg, fg, size = 34, rot = 0 }: { v: string; bg: string; fg: string; size?: number; rot?: number }) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size * 0.28,
+        backgroundColor: bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderBottomWidth: 3,
+        borderBottomColor: 'rgba(0,0,0,0.18)',
+        transform: [{ rotate: `${rot}deg` }],
+      }}
+    >
+      <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: size * 0.5, color: fg }}>
+        {v}
+      </Text>
+    </View>
+  );
+}
+
+function PopArt() {
+  return (
+    <View style={{ gap: 6, alignItems: 'center' }}>
+      <MiniTile v="10" bg="#fff" fg="#EA580C" size={40} />
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <MiniTile v="6" bg="rgba(255,255,255,0.9)" fg="#4F46E5" rot={-6} />
+        <MiniTile v="4" bg="rgba(255,255,255,0.9)" fg="#4F46E5" rot={6} />
+      </View>
+    </View>
+  );
+}
+
+function TenArt() {
+  return (
+    <View style={{ gap: 6 }}>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <MiniTile v="3" bg="#fff" fg="#059669" rot={-5} />
+        <MiniTile v="7" bg="#fff" fg="#059669" rot={4} />
+      </View>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <MiniTile v="1" bg="#fff" fg="#E11D48" rot={3} />
+        <MiniTile v="9" bg="#fff" fg="#E11D48" rot={-4} />
+      </View>
+    </View>
+  );
+}
+
+function TargetArt() {
+  return (
+    <View style={{ alignItems: 'center', gap: 6 }}>
+      <View style={{ paddingHorizontal: 10, height: 40, borderRadius: 12, borderWidth: 3, borderColor: '#FDBA74', backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+        <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 22, color: '#0F172A' }}>
+          373
+        </Text>
+      </View>
+      <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 18, color: '#fff' }}>
+        + − × ÷
+      </Text>
+    </View>
+  );
+}
+
+function shade(hex: string): string {
+  const n = parseInt(hex.slice(1), 16);
+  const r = Math.max(0, ((n >> 16) & 255) - 50);
+  const g = Math.max(0, ((n >> 8) & 255) - 50);
+  const b = Math.max(0, (n & 255) - 50);
+  return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
 }

@@ -275,7 +275,7 @@ function TenPlay({ level }: { level: number }) {
         <IconBtn label="←" a11y={t('back')} onPress={goBack} />
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text maxFontSizeMultiplier={NUM_SCALE} style={{ fontFamily: fonts.uiBold, fontSize: 17, color: c.text }}>
-            Number Ten · {t('levelShort', { n: level })}
+            {t('tenTitle')} · {t('levelShort', { n: level })}
           </Text>
         </View>
         <IconBtn label="?" a11y={t('tenRulesTitle')} onPress={() => setRules(true)} />

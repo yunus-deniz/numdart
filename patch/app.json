@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Numdart",
+    "name": "Digitopia",
     "slug": "numdart",
     "scheme": "numdart",
     "version": "1.0.0",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.yunusdeniz.numdart",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "backgroundColor": "#3F3AB0",
         "foregroundImage": "./assets/android-icon-foreground.png",

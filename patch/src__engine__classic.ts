@@ -434,5 +434,5 @@ export function shareText(opts: {
   // Trim anything played after the target was hit.
   const hit = lines.findIndex((l) => l.endsWith('🎯'));
   const body = hit >= 0 ? lines.slice(0, hit + 1) : lines;
-  return [`Numdart #${number} 🎯 ${target}`, starLine, '', ...body, '', `🔥 ${streakLabel}: ${streak}`, url].join('\n');
+  return [`Digitopia #${number} 🎯 ${target}`, starLine, '', ...body, '', `🔥 ${streakLabel}: ${streak}`, url].join('\n');
 }
