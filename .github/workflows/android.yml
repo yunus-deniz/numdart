@@ -12,21 +12,6 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Unpack source
-        run: unzip -q -o numdart-src.zip -d app
-
-      # Files in patch/ override the zip. Name encodes the path: src__app__daily.tsx -> src/app/daily.tsx
-      - name: Apply source patch
-        run: |
-          if [ -d patch ]; then
-            for f in patch/*; do
-              dest="app/$(basename "$f" | sed 's#__#/#g')"
-              mkdir -p "$(dirname "$dest")"
-              cp "$f" "$dest"
-              echo "patched $dest"
-            done
-          fi
-
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -37,25 +22,21 @@ jobs:
           java-version: 17
 
       - name: Install dependencies
-        working-directory: app
         run: npm ci
 
       - name: Engine tests (1000 days + 500 levels)
-        working-directory: app
         run: npm test
 
       - name: Typecheck
-        working-directory: app
         run: npx tsc --noEmit
 
       - name: Generate native Android project
-        working-directory: app
         env:
           CI: 1
         run: npx expo prebuild --platform android --no-install
 
       # Signing key comes from repository secrets (Settings > Secrets and variables > Actions):
-      #   NUMDART_KEYSTORE_BASE64, NUMDART_KEYSTORE_PASSWORD
+      # NUMDART_KEYSTORE_BASE64, NUMDART_KEYSTORE_PASSWORD
       # Without them only a test APK (debug-signed) is produced.
       - name: Prepare upload key
         id: key
@@ -71,12 +52,12 @@ jobs:
 
       - name: Build test APK
         if: steps.key.outputs.signed == 'false'
-        working-directory: app/android
+        working-directory: android
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Build signed AAB + APK
         if: steps.key.outputs.signed == 'true'
-        working-directory: app/android
+        working-directory: android
         env:
           NUMDART_KEYSTORE_PATH: ${{ runner.temp }}/upload.jks
           NUMDART_KEYSTORE_PASSWORD: ${{ secrets.NUMDART_KEYSTORE_PASSWORD }}
@@ -87,9 +68,9 @@ jobs:
       - name: Collect outputs
         run: |
           mkdir -p out
-          cp app/android/app/build/outputs/apk/release/app-release.apk out/numdart-1.0.1.apk
-          if [ -f app/android/app/build/outputs/bundle/release/app-release.aab ]; then
-            cp app/android/app/build/outputs/bundle/release/app-release.aab out/numdart-1.0.1.aab
+          cp android/app/build/outputs/apk/release/app-release.apk out/numdart-1.0.1.apk
+          if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then
+            cp android/app/build/outputs/bundle/release/app-release.aab out/numdart-1.0.1.aab
           fi
           ls -la out
 
