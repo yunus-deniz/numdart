@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -79,3 +82,17 @@ jobs:
           name: numdart-android
           path: out/
           retention-days: 90
+
+      # Publish the signed AAB to the `play-upload` branch so it can be uploaded to
+      # Play Console from a browser without downloading the zipped artifact.
+      - name: Publish AAB to play-upload branch
+        if: steps.key.outputs.signed == 'true'
+        run: |
+          mkdir -p /tmp/pub && cp out/*.aab /tmp/pub/app-release.aab
+          cd /tmp/pub
+          git init -q -b play-upload
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app-release.aab
+          git commit -q -m "AAB from ${GITHUB_SHA}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" play-upload
