@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.yunusdeniz.numdart",
-      "versionCode": 4,
+      "versionCode": 5,
       "adaptiveIcon": {
         "backgroundColor": "#3F3AB0",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -62,7 +62,13 @@
           }
         }
       ],
-      "./plugins/withReleaseSigning"
+      "./plugins/withReleaseSigning",
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-2331976932548666~2038622275"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
