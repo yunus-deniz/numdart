@@ -9,6 +9,7 @@ import { useStore } from '../lib/store';
 import { fonts, useTheme, type Palette } from '../lib/theme';
 import { CONTACT_EMAIL, PRIVACY_URL } from '../lib/config';
 import { resolveLang } from '../i18n';
+import { isPrivacyOptionsRequired, showPrivacyOptions } from '../lib/ads';
 
 function Row({ c, children }: { c: Palette; children: React.ReactNode }) {
   return (
@@ -90,6 +91,14 @@ export default function SettingsScreen() {
             <Text style={{ color: c.text2, fontSize: 18 }}>›</Text>
           </Row>
         </Pressable>
+        {isPrivacyOptionsRequired() && (
+          <Pressable onPress={showPrivacyOptions} accessibilityRole="button">
+            <Row c={c}>
+              <Text style={label}>{t('adPrivacy')}</Text>
+              <Text style={{ color: c.text2, fontSize: 18 }}>›</Text>
+            </Row>
+          </Pressable>
+        )}
         <Pressable onPress={() => Linking.openURL(`mailto:${CONTACT_EMAIL}?subject=Digitopia`)} accessibilityRole="link">
           <Row c={c}>
             <Text style={label}>{t('contact')}</Text>
@@ -99,7 +108,6 @@ export default function SettingsScreen() {
         <Text style={{ fontFamily: fonts.ui, fontSize: 12, color: c.text2, textAlign: 'center', marginTop: 12 }}>
           Digitopia · {t('version', { v: Constants.expoConfig?.version ?? '1.0.0' })}
         </Text>
-        <Text style={{ fontFamily: fonts.ui, fontSize: 12, color: c.text2, textAlign: 'center' }}>{t('testBuild')}</Text>
       </ScrollView>
     </Screen>
   );

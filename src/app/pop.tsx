@@ -26,6 +26,7 @@ import { useStore } from '../lib/store';
 import { fonts, NUM_SCALE, useTheme } from '../lib/theme';
 import { haptic, sound } from '../lib/feedback';
 import { requestReward } from '../lib/rewards';
+import { maybeShowInterstitial } from '../lib/ads';
 
 const GAP = 12;
 
@@ -103,7 +104,8 @@ function LevelPlay({ level }: { level: number }) {
         setBurst((b) => b + 1);
         sound('win');
         haptic.success();
-        later(1500, () => {
+        later(1500, async () => {
+          await maybeShowInterstitial(level);
           boardStore.set((p) => ({
             ...p,
             level: level + 1,

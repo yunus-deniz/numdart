@@ -29,6 +29,7 @@ import { tenStore } from '../lib/state';
 import { useStore } from '../lib/store';
 import { fonts, MAX_W, NUM_SCALE, useTheme } from '../lib/theme';
 import { haptic, sound } from '../lib/feedback';
+import { maybeShowInterstitial } from '../lib/ads';
 
 const GAP = 5;
 const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -247,8 +248,9 @@ function TenPlay({ level }: { level: number }) {
     sound('tap');
   };
 
-  const nextLevel = () => {
+  const nextLevel = async () => {
     setSheet(false);
+    await maybeShowInterstitial(level);
     tenStore.set((p) => ({ ...p, level: level + 1, current: null }));
   };
 
