@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { IconBtn, Screen } from '../components/ui';
 import { tenColor } from '../components/TenTile';
-import { boardStore, dailyStore, tenStore } from '../lib/state';
+import { boardStore, lockStore, sudokuStore, tenStore, unlimitedStore } from '../lib/state';
+import { modeLabel } from '../lib/sudokuLabel';
 import { useStore } from '../lib/store';
-import { localDateISO } from '../engine/dates';
 import { fonts, NUM_SCALE, useTheme } from '../lib/theme';
 import { haptic, sound } from '../lib/feedback';
 
@@ -19,8 +19,10 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const board = useStore(boardStore);
   const ten = useStore(tenStore);
-  const daily = useStore(dailyStore);
-  const doneToday = !!daily.records[localDateISO()]?.finished;
+  const unl = useStore(unlimitedStore);
+  const lock = useStore(lockStore);
+  const sud = useStore(sudokuStore);
+  const sudDone = Object.values(sud.solved).reduce((a, b) => a + (b ?? 0), 0);
 
   const go = (href: Href) => {
     sound('tap');
@@ -72,10 +74,28 @@ export default function HomeScreen() {
             color={c.dark ? '#0F766E' : '#0D9488'}
             title={t('targetTitle')}
             desc={t('targetDesc')}
-            badge={doneToday ? t('menuDone') : t('menuReady')}
-            dot={!doneToday}
+            badge={t('menuEndless', { n: unl.exact })}
             art={<TargetArt />}
             onPress={() => go('/daily')}
+          />
+          <GameCard
+            index={3}
+            color={c.dark ? '#B45309' : '#D97706'}
+            title={t('lockTitle')}
+            desc={t('lockDesc')}
+            badge={t('lockBadge', { n: lock.level, g: lock.gold })}
+            dot={lock.level === 1 && !lock.rulesSeen}
+            art={<LockArt />}
+            onPress={() => go('/lock')}
+          />
+          <GameCard
+            index={4}
+            color={c.dark ? '#15803D' : '#16A34A'}
+            title={t('sudTitle')}
+            desc={t('sudDesc')}
+            badge={t('sudBadge', { m: modeLabel(t, sud.mode), n: sudDone })}
+            art={<SudokuArt />}
+            onPress={() => go('/sudoku')}
           />
         </View>
       </ScrollView>
@@ -196,6 +216,44 @@ function TargetArt() {
       </View>
       <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 18, color: '#fff' }}>
         + − × ÷
+      </Text>
+    </View>
+  );
+}
+
+function SudokuArt() {
+  const rows = [
+    ['1', '', '3', ''],
+    ['', '4', '', '2'],
+    ['2', '', '4', ''],
+  ];
+  return (
+    <View style={{ backgroundColor: '#fff', borderRadius: 10, padding: 3, gap: 2 }}>
+      {rows.map((r, i) => (
+        <View key={i} style={{ flexDirection: 'row', gap: 2 }}>
+          {r.map((v, j) => (
+            <View key={j} style={{ width: 19, height: 19, borderRadius: 4, backgroundColor: v ? '#DCFCE7' : '#F1F5F9', alignItems: 'center', justifyContent: 'center' }}>
+              <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 12, color: '#15803D' }}>
+                {v}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function LockArt() {
+  return (
+    <View style={{ alignItems: 'center', gap: 6 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+        <MiniTile v="7" bg="#fff" fg="#0F172A" size={30} />
+        <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 16, color: '#FEF3C7' }}>×</Text>
+        <MiniTile v="?" bg="#fff" fg="#D97706" size={30} />
+      </View>
+      <Text allowFontScaling={false} style={{ fontFamily: fonts.num, fontSize: 20, color: '#fff' }}>
+        🔒 = 42
       </Text>
     </View>
   );

@@ -48,19 +48,18 @@ import { PLAY_URL } from '../lib/config';
 
 const goBack = () => (router.canGoBack() ? router.back() : router.replace('/'));
 type Mode = 'daily' | 'unlimited';
+/** Daily mode switched off: Hedef only offers unlimited puzzles. */
+const SHOW_DAILY = false;
 
 export default function DailyScreen() {
   const [today] = useState(localDateISO);
   // Must be computed before touchDate() moves the high-water mark.
   const [rolledBack] = useState(() => clockRolledBack(today));
   useEffect(() => touchDate(today), [today]);
-  // Today's daily already done → open straight into Unlimited.
-  const [mode, setMode] = useState<Mode>(() => (dailyStore.get().records[today]?.finished ? 'unlimited' : 'daily'));
-  return mode === 'daily' ? (
-    <DailyMode today={today} rolledBack={rolledBack} onMode={setMode} />
-  ) : (
-    <UnlimitedMode today={today} onMode={setMode} />
-  );
+  // Hedef is unlimited-only now (the daily puzzle mode is hidden).
+  const [mode, setMode] = useState<Mode>('unlimited');
+  if (SHOW_DAILY && mode === 'daily') return <DailyMode today={today} rolledBack={rolledBack} onMode={setMode} />;
+  return <UnlimitedMode today={today} onMode={setMode} />;
 }
 
 function opName(t: (k: string) => string, op: Op) {
@@ -94,10 +93,16 @@ function TopBar({ mode, onMode, right }: { mode: Mode; onMode: (m: Mode) => void
     <View style={{ height: 48, flexDirection: 'row', alignItems: 'center' }}>
       <IconBtn label="←" a11y={t('back')} onPress={goBack} />
       <View style={{ flex: 1, alignItems: 'center' }}>
-        <View style={{ flexDirection: 'row', backgroundColor: c.surface, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: c.border }}>
-          {seg('daily', t('modeDaily'))}
-          {seg('unlimited', t('modeUnlimited'))}
-        </View>
+        {SHOW_DAILY ? (
+          <View style={{ flexDirection: 'row', backgroundColor: c.surface, borderRadius: 12, padding: 3, borderWidth: 1, borderColor: c.border }}>
+            {seg('daily', t('modeDaily'))}
+            {seg('unlimited', t('modeUnlimited'))}
+          </View>
+        ) : (
+          <Text maxFontSizeMultiplier={NUM_SCALE} style={{ fontFamily: fonts.uiBold, fontSize: 17, color: c.text }}>
+            {t('targetTitle')} · {t('modeUnlimited')}
+          </Text>
+        )}
       </View>
       {right}
     </View>
@@ -261,7 +266,7 @@ function UnlimitedMode({ today, onMode }: { today: string; onMode: (m: Mode) => 
       unfinishedExtra={<Btn flex small label={t('newShort')} a11y={t('newPuzzle')} onPress={() => newPuzzle()} />}
       finishedBar={() => (
         <>
-          {!dailyDone && <Btn flex small label={t('modeDaily')} onPress={() => onMode('daily')} />}
+          {SHOW_DAILY && !dailyDone && <Btn flex small label={t('modeDaily')} onPress={() => onMode('daily')} />}
           <Btn style={{ flex: 1.6 }} small kind="primary" label={t('nextPuzzle')} onPress={() => newPuzzle()} />
         </>
       )}
