@@ -7,7 +7,7 @@
  */
 import { adStore, showRewarded } from './ads';
 
-export type RewardKind = 'board-hint' | 'daily-hint' | 'reveal-solution' | 'save-streak';
+export type RewardKind = 'board-hint' | 'daily-hint' | 'reveal-solution' | 'save-streak' | 'lock-hint' | 'sudoku-hint';
 
 export const ADS_ENABLED = true;
 

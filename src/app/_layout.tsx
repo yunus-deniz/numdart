@@ -50,6 +50,8 @@ export default function RootLayout() {
         <Stack.Screen name="pop" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="daily" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="ten" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="lock" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="sudoku" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="stats" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>

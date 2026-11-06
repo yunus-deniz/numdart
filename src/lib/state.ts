@@ -3,6 +3,7 @@ import { persistedStore } from './store';
 import type { BoardState } from '../engine/board';
 import type { Move } from '../engine/classic';
 import type { TenState } from '../engine/ten';
+import type { SudokuMode } from '../engine/sudoku';
 import { addDays } from '../engine/dates';
 
 // ───────────── Settings ─────────────
@@ -179,5 +180,47 @@ export const tenStore = persistedStore<TenProgress>('ten', {
   current: null,
   stars: {},
   totalScore: 0,
+  rulesSeen: false,
+});
+
+// ───────────── Equation Lock (Denklem Kilidi) ─────────────
+export interface LockProgress {
+  level: number;
+  maxLevel: number;
+  /** dial positions + wrong tries of the level in progress */
+  current: null | { level: number; dials: number[]; tries: number; hinted: boolean };
+  stars: Record<number, number>;
+  gold: number;
+  rulesSeen: boolean;
+}
+export const lockStore = persistedStore<LockProgress>('lock', {
+  level: 1,
+  maxLevel: 1,
+  current: null,
+  stars: {},
+  gold: 0,
+  rulesSeen: false,
+});
+
+// ───────────── Sudoku (4×4, 6×6 for kids; 9×9 easy / medium / hard) ─────────────
+export interface SudokuProgress {
+  mode: SudokuMode;
+  /** 0 = pick a fresh puzzle on next open */
+  seed: number;
+  grid: number[];
+  mistakes: number;
+  hints: number;
+  finished: boolean;
+  solved: Partial<Record<SudokuMode, number>>;
+  rulesSeen: boolean;
+}
+export const sudokuStore = persistedStore<SudokuProgress>('sudoku', {
+  mode: 'mini4',
+  seed: 0,
+  grid: [],
+  mistakes: 0,
+  hints: 0,
+  finished: false,
+  solved: {},
   rulesSeen: false,
 });
