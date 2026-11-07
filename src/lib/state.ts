@@ -202,7 +202,7 @@ export const lockStore = persistedStore<LockProgress>('lock', {
   rulesSeen: false,
 });
 
-// ───────────── Sudoku (4×4, 6×6 for kids; 9×9 easy / medium / hard) ─────────────
+// ───────────── Sudoku (4×4, 5×5, 6×6 for kids; 9×9 — each easy / medium / hard / extreme) ─────────────
 export interface SudokuProgress {
   mode: SudokuMode;
   /** 0 = pick a fresh puzzle on next open */
@@ -215,7 +215,7 @@ export interface SudokuProgress {
   rulesSeen: boolean;
 }
 export const sudokuStore = persistedStore<SudokuProgress>('sudoku', {
-  mode: 'mini4',
+  mode: '4-easy',
   seed: 0,
   grid: [],
   mistakes: 0,

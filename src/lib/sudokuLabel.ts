@@ -1,5 +1,11 @@
-import type { SudokuMode } from '../engine/sudoku';
+import { parseMode, type SudokuLevel } from '../engine/sudoku';
 
-export function modeLabel(t: (k: string) => string, m: SudokuMode) {
-  return m === 'mini4' ? t('sudMini4') : m === 'mini6' ? t('sudMini6') : m === 'easy' ? t('sudEasy') : m === 'medium' ? t('sudMedium') : t('sudHard');
+const LEVEL_KEY: Record<SudokuLevel, string> = { easy: 'sudEasy', medium: 'sudMedium', hard: 'sudHard', extreme: 'sudExtreme' };
+
+export const levelLabel = (t: (k: string) => string, l: SudokuLevel) => t(LEVEL_KEY[l]);
+
+/** e.g. "5×5 · Kolay" */
+export function modeLabel(t: (k: string) => string, m: string) {
+  const { size, level } = parseMode(m);
+  return `${size}×${size} · ${levelLabel(t, level)}`;
 }
