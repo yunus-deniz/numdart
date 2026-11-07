@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.yunusdeniz.numdart",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "backgroundColor": "#0B1940",
         "foregroundImage": "./assets/android-icon-foreground.png",
